@@ -2,6 +2,7 @@
 #import "RNCarPlayViewController.h"
 #import <React/RCTConvert.h>
 #import <React/RCTRootView.h>
+#import <MediaPlayer/MediaPlayer.h>
 
 @implementation RNCarPlay
 {
@@ -1528,6 +1529,78 @@ RCT_EXPORT_METHOD(updateMapTemplateMapButtons:(NSString*) templateId mapButtons:
 
 - (void)nowPlayingTemplateAlbumArtistButtonTapped:(CPNowPlayingTemplate *)nowPlayingTemplate {
     [self sendTemplateEventWithName:nowPlayingTemplate name:@"albumArtistButtonPressed"];
+}
+
+RCT_EXPORT_METHOD(checkMPNowPlayingInfoCenter) {
+    NSDictionary *nowPlayingInfo = [MPNowPlayingInfoCenter defaultCenter].nowPlayingInfo;
+    NSLog(@"Current Now Playing Info: %@", nowPlayingInfo);
+}
+
+RCT_EXPORT_METHOD(updateNowPlayingInfo:(NSDictionary *)info) {
+    // Ensure this runs on the main thread
+    dispatch_async(dispatch_get_main_queue(), ^{
+        MPNowPlayingInfoCenter *nowPlayingInfoCenter = [MPNowPlayingInfoCenter defaultCenter];
+        
+        NSMutableDictionary *nowPlayingInfo = [nowPlayingInfoCenter.nowPlayingInfo mutableCopy];
+        if (!nowPlayingInfo) {
+            nowPlayingInfo = [NSMutableDictionary new];
+        }
+        
+        // Add null checks for all string values
+        if (info[@"title"] && ![info[@"title"] isEqual:[NSNull null]]) {
+            [nowPlayingInfo setObject:info[@"title"] forKey:MPMediaItemPropertyTitle];
+        }
+        if (info[@"artist"] && ![info[@"artist"] isEqual:[NSNull null]]) {
+            [nowPlayingInfo setObject:info[@"artist"] forKey:MPMediaItemPropertyArtist];
+        }
+        if (info[@"album"] && ![info[@"album"] isEqual:[NSNull null]]) {
+            [nowPlayingInfo setObject:info[@"album"] forKey:MPMediaItemPropertyAlbumTitle];
+        }
+        if (info[@"progress"] && ![info[@"progress"] isEqual:[NSNull null]]) {
+            [nowPlayingInfo setObject:[NSNumber numberWithDouble:[info[@"progress"] doubleValue]] forKey:MPNowPlayingInfoPropertyElapsedPlaybackTime];
+        }
+        if (info[@"duration"] && ![info[@"duration"] isEqual:[NSNull null]]) {
+            [nowPlayingInfo setObject:[NSNumber numberWithDouble:[info[@"duration"] doubleValue]] forKey:MPMediaItemPropertyPlaybackDuration];
+        }
+        if (info[@"rate"] && ![info[@"rate"] isEqual:[NSNull null]]) {
+            [nowPlayingInfo setObject:[NSNumber numberWithDouble:[info[@"rate"] doubleValue]] forKey:MPNowPlayingInfoPropertyPlaybackRate];
+            [nowPlayingInfo setObject:[NSNumber numberWithDouble:[info[@"rate"] doubleValue]] forKey:MPNowPlayingInfoPropertyDefaultPlaybackRate];
+        }
+        if (info[@"type"] && ![info[@"type"] isEqual:[NSNull null]]) {
+            [nowPlayingInfo setObject:[NSNumber numberWithInt:[info[@"type"] intValue]] forKey:MPNowPlayingInfoPropertyMediaType];
+        }
+        if (info[@"image"] && ![info[@"image"] isEqual:[NSNull null]]) {
+            // Load the cover image asynchronously
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                @try {
+                    UIImage *image = [RCTConvert UIImage:info[@"image"]];
+                    if (image) {
+                        MPMediaItemArtwork *artwork = [[MPMediaItemArtwork alloc] initWithBoundsSize:image.size requestHandler:^UIImage * _Nonnull(CGSize size) {
+                            return image;
+                        }];
+                        
+                        dispatch_async(dispatch_get_main_queue(), ^{
+                            [nowPlayingInfo setObject:artwork forKey:MPMediaItemPropertyArtwork];
+                            nowPlayingInfoCenter.nowPlayingInfo = nowPlayingInfo;
+                        });
+                    } else {
+                        NSLog(@"CarPlay: Failed to convert image, setting now playing info without artwork");
+                        dispatch_async(dispatch_get_main_queue(), ^{
+                            nowPlayingInfoCenter.nowPlayingInfo = nowPlayingInfo;
+                        });
+                    }
+                } @catch (NSException *exception) {
+                    NSLog(@"CarPlay: Exception when converting image: %@", exception);
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        nowPlayingInfoCenter.nowPlayingInfo = nowPlayingInfo;
+                    });
+                }
+            });
+        } else {
+            // Set the now playing info immediately if no image
+            nowPlayingInfoCenter.nowPlayingInfo = nowPlayingInfo;
+        }
+    });
 }
 
 @end

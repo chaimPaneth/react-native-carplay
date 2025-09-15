@@ -1,9 +1,15 @@
-import { ImageSourcePropType, Platform } from 'react-native';
+import { ImageSourcePropType, Platform, Image } from 'react-native';
 import { CarPlay } from '../CarPlay';
 import { BarButton } from '../interfaces/BarButton';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const resolveAssetSource = require('react-native/Libraries/Image/resolveAssetSource');
+// Safe resolveAssetSource for RN 0.79.5+
+let resolveAssetSource: any;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  resolveAssetSource = require('react-native/Libraries/Image/resolveAssetSource').default;
+} catch (error) {
+  resolveAssetSource = Image.resolveAssetSource;
+}
 
 export interface BaseEvent {
   /**

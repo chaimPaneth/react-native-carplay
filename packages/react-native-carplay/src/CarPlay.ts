@@ -89,6 +89,17 @@ export interface InternalCarPlay extends NativeModule {
   reactToUpdatedSearchText(id: string, items: unknown): void;
   updateTabBarTemplates(id: string, config: unknown): void;
   activateVoiceControlState(id: string, identifier: string): void;
+  checkMPNowPlayingInfoCenter(): void;
+  updateNowPlayingInfo(info: {
+    title?: string;
+    artist?: string;
+    album?: string;
+    progress?: number;
+    duration?: number;
+    rate?: number;
+    type?: number;
+    image?: ImageSourcePropType;
+  }): void;
   // Android
   reload(): void;
   toast(message: string, duration: number): void;
@@ -292,6 +303,30 @@ export class CarPlayInterface {
    */
   public enableNowPlaying(enable = true) {
     return this.bridge.enableNowPlaying(enable);
+  }
+
+  /**
+   * Check the current MPNowPlayingInfoCenter status
+   */
+  public checkMPNowPlayingInfoCenter() {
+    return this.bridge.checkMPNowPlayingInfoCenter();
+  }
+
+  /**
+   * Update the Now Playing info in the media player
+   * @param info Object containing title, artist, album, progress, duration, rate, type, image
+   */
+  public updateNowPlayingInfo(info: {
+    title?: string;
+    artist?: string;
+    album?: string;
+    progress?: number;
+    duration?: number;
+    rate?: number;
+    type?: number;
+    image?: ImageSourcePropType;
+  }) {
+    return this.bridge.updateNowPlayingInfo(info);
   }
 }
 
